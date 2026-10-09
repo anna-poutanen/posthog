@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from requests import Response
 
-from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import (
+from sources.sdk import (
     EndpointResource,
     PageNumberPaginator,
     Resource,

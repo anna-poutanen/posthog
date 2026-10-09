@@ -8,8 +8,8 @@ in `_load_all.py`, `generated_configs/` or the `ExternalDataSourceType` enum.
 import dataclasses
 from typing import Any, Optional, cast
 
-from products.warehouse_sources.backend.temporal.data_imports.sources.demo_acme._config import DemoAcmeSourceConfig
-from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import (
+from sources.demo_acme._config import DemoAcmeSourceConfig
+from sources.sdk import (
     CanonicalDescriptions,
     DataWarehouseSourceCategory,
     EndpointResource,
@@ -142,7 +142,7 @@ class DemoAcmeSource(ResumableSource[DemoAcmeSourceConfig, DemoAcmeResumeConfig]
             redact_values=(config.api_key,),
             allow_redirects=False,
         )
-        if session.get(f"{BASE_URL}/widgets?per_page=1").status_code == 200:
+        if session.get(f"{BASE_URL}/widgets?per_page=1", timeout=(5, 10)).status_code == 200:
             return True, None
         return False, "Invalid API key"
 

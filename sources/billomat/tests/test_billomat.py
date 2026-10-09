@@ -9,11 +9,8 @@ from unittest.mock import MagicMock, patch
 
 from requests import Response
 
-from products.warehouse_sources.backend.temporal.data_imports.sources.billomat._config import (
-    BillomatRegisteredAppConfig,
-    BillomatSourceConfig,
-)
-from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.billomat import (
+from sources.billomat._config import BillomatRegisteredAppConfig, BillomatSourceConfig
+from sources.billomat.billomat import (
     BillomatPaginator,
     BillomatResumeConfig,
     _extract_total_count,
@@ -21,8 +18,8 @@ from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.b
     billomat_source,
     validate_credentials as validate_billomat_credentials,
 )
-from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.source import BillomatSource
-from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import ResumableSourceManager, SourceInputs
+from sources.billomat.source import BillomatSource
+from sources.sdk import ResumableSourceManager, SourceInputs
 
 
 def _make_inputs(**overrides: Any) -> SourceInputs:
@@ -103,9 +100,7 @@ class TestBillomatSourceResumeBehavior:
             sent_params.append(dict(request.params or {}))
             return next(response_iter)
 
-        with patch(
-            "products.warehouse_sources.backend.temporal.data_imports.sources.billomat.billomat.make_tracked_session"
-        ) as MockSession:
+        with patch("sources.billomat.billomat.make_tracked_session") as MockSession:
             mock_session = MockSession.return_value
             mock_session.headers = {}
             mock_session.prepare_request.side_effect = lambda req: req
@@ -184,7 +179,7 @@ class TestBillomatSourceResumeBehavior:
 
 
 class TestValidateCredentials:
-    @patch("products.warehouse_sources.backend.temporal.data_imports.sources.billomat.billomat.make_tracked_session")
+    @patch("sources.billomat.billomat.make_tracked_session")
     def test_registered_app_headers_included_when_both_present(self, mock_session_factory: MagicMock) -> None:
         mock_session_factory.return_value.get.return_value = MagicMock(status_code=200)
 
@@ -220,9 +215,7 @@ class TestBillomatSource:
         self, billomat_id: str, valid: bool
     ) -> None:
         config = BillomatSourceConfig(billomat_id=billomat_id, api_key="key")
-        with mock.patch(
-            "products.warehouse_sources.backend.temporal.data_imports.sources.billomat.source.validate_billomat_credentials"
-        ) as mock_validate:
+        with mock.patch("sources.billomat.source.validate_billomat_credentials") as mock_validate:
             mock_validate.return_value = True
             is_valid, message = self.source.validate_credentials(config, self.team_id)
 
@@ -238,9 +231,7 @@ class TestBillomatSource:
             (False, False, "Invalid credentials"),
         ],
     )
-    @mock.patch(
-        "products.warehouse_sources.backend.temporal.data_imports.sources.billomat.source.validate_billomat_credentials"
-    )
+    @mock.patch("sources.billomat.source.validate_billomat_credentials")
     def test_validate_credentials(
         self,
         mock_validate: mock.MagicMock,
@@ -256,7 +247,7 @@ class TestBillomatSource:
         assert error_message == expected_message
         mock_validate.assert_called_once_with("test-key", "acme", None, None)
 
-    @mock.patch("products.warehouse_sources.backend.temporal.data_imports.sources.billomat.source.billomat_source")
+    @mock.patch("sources.billomat.source.billomat_source")
     def test_source_for_pipeline_only_passes_last_value_when_incremental(self, mock_source: mock.MagicMock) -> None:
         inputs = _make_inputs(
             schema_name="Invoices",
@@ -269,7 +260,7 @@ class TestBillomatSource:
 
         assert mock_source.call_args.kwargs["db_incremental_field_last_value"] == date(2024, 1, 1)
 
-    @mock.patch("products.warehouse_sources.backend.temporal.data_imports.sources.billomat.source.billomat_source")
+    @mock.patch("sources.billomat.source.billomat_source")
     def test_source_for_pipeline_passes_registered_app_credentials(self, mock_source: mock.MagicMock) -> None:
         config = BillomatSourceConfig(
             billomat_id="acme",

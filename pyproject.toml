@@ -574,7 +574,7 @@ exclude = [
 # Complements tach (inter-module boundaries) with intra-product enforcement.
 
 [tool.importlinter]
-root_packages = ["products", "owners_yaml"]
+root_packages = ["products", "owners_yaml", "sources"]
 include_external_packages = true
 
 # A Python distribution under packages/ is a leaf: it must install and run outside the

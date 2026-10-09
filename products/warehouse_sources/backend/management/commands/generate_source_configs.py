@@ -21,16 +21,24 @@ from products.warehouse_sources.backend.facade.source_config import (
     SourceFieldSSHTunnelConfig,
     SourceFieldSwitchGroupConfig,
 )
-from products.warehouse_sources.backend.temporal.data_imports.sources import SourceRegistry, source_module_path
+from products.warehouse_sources.backend.temporal.data_imports.sources import (
+    PLUGIN_PACKAGE,
+    SourceRegistry,
+    source_module_path,
+)
 from products.warehouse_sources.backend.types import ExternalDataSourceType
 
 logger = get_logger(__name__)
 logger.setLevel(logging.INFO)
 
-SOURCES_DIR = Path(__file__).parent.parent.parent / "temporal" / "data_imports" / "sources"
+REPO_ROOT = Path(__file__).parents[5]
+SOURCES_DIR = REPO_ROOT / "products" / "warehouse_sources" / "backend" / "temporal" / "data_imports" / "sources"
+GENERATED_CONFIGS_DIR = SOURCES_DIR / "generated_configs"
 COMMON_CONFIG_PACKAGE = "products.warehouse_sources.backend.temporal.data_imports.sources.common"
-# DEMO (warehouse source plugins): a plugin directory imports shared code only from the SDK.
-PLUGIN_CONFIG_PACKAGE = "products.warehouse_sources.backend.temporal.data_imports.sources.sdk"
+# DEMO (warehouse source plugins): plugin vendors live in the top-level `sources` package, and a
+# plugin directory imports shared code only from the SDK.
+PLUGIN_SOURCES_DIR = REPO_ROOT / PLUGIN_PACKAGE
+PLUGIN_CONFIG_PACKAGE = f"{PLUGIN_PACKAGE}.sdk"
 
 
 # Generates `@config.Config` dataclasses to be used by sources to parse inputs from the frontend.
@@ -57,11 +65,12 @@ class SourceConfigGenerator:
         self.nested_configs: dict[str, str] = {}
 
     def generate_all_modules(self) -> dict[str, str]:
-        """One generated module per source, keyed by its path under the sources directory.
+        """One generated module per source, keyed by its path relative to the repo root.
 
         That path is `generated_configs/<ExternalDataSourceType.<MEMBER>.name.lower()>.py`, or
         `<source dir>/_config.py` for a plugin directory (DEMO: warehouse source plugins), which
-        already holds that file. The rule is shared with `generated_configs/__init__.py`'s
+        already holds that file. A plugin directory is `sources/<vendor>/` at the top level, or a
+        vendor directory of this product. The rule is shared with `generated_configs/__init__.py`'s
         `get_config_for_source`, which resolves configs by deriving the same path at runtime —
         neither side needs regenerating when a source is added."""
         try:
@@ -80,7 +89,7 @@ class SourceConfigGenerator:
                 module_name = source_type.name.lower()
                 if not module_name.isidentifier():
                     raise ValueError(f"{source_type.name} does not lower() to a valid module name")
-                module_path = f"generated_configs/{module_name}.py"
+                module_path = str((GENERATED_CONFIGS_DIR / f"{module_name}.py").relative_to(REPO_ROOT))
                 if module_path in modules:
                     raise ValueError(f"Module name collision for {source_type.name}: {module_name}")
                 modules[module_path] = self._generate_module(source_type, source_config)
@@ -95,8 +104,10 @@ class SourceConfigGenerator:
         module_path = source_module_path(source_type)
         if module_path is None:
             return None
-        config_path = f"{module_path.split('.')[-2]}/_config.py"
-        return config_path if (SOURCES_DIR / config_path).is_file() else None
+        vendor_dir = module_path.split(".")[-2]
+        root = PLUGIN_SOURCES_DIR if module_path.startswith(f"{PLUGIN_PACKAGE}.") else SOURCES_DIR
+        config_path = root / vendor_dir / "_config.py"
+        return str(config_path.relative_to(REPO_ROOT)) if config_path.is_file() else None
 
     def _generate_module(
         self,
@@ -617,16 +628,18 @@ class Command(BaseCommand):
         generator = SourceConfigGenerator()
         modules = generator.generate_all_modules()
 
-        output_dir = os.path.join(SOURCES_DIR, "generated_configs")
+        output_dir = str(GENERATED_CONFIGS_DIR)
         os.makedirs(output_dir, exist_ok=True)
 
         for module_path, module_source in modules.items():
-            with open(os.path.join(SOURCES_DIR, module_path), "w") as f:
+            with open(REPO_ROOT / module_path, "w") as f:
                 f.write(module_source)
 
         # __init__.py is hand-written (the runtime resolver); never write it. Remove modules for
         # sources no longer in the registry so a deleted source can't leave stale config classes.
-        expected = {path.removeprefix("generated_configs/") for path in modules} | {"__init__.py"}
+        expected = {Path(path).name for path in modules if (REPO_ROOT / path).parent == GENERATED_CONFIGS_DIR} | {
+            "__init__.py"
+        }
         for stale in set(os.listdir(output_dir)) - expected:
             if stale.endswith(".py"):
                 os.remove(os.path.join(output_dir, stale))

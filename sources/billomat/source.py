@@ -2,17 +2,15 @@ import re
 from dataclasses import field
 from typing import Optional, cast
 
-from products.warehouse_sources.backend.temporal.data_imports.sources.billomat._config import BillomatSourceConfig
-from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.billomat import (
+from sources.billomat._config import BillomatSourceConfig
+from sources.billomat.billomat import (
     BillomatResumeConfig,
     billomat_source,
     validate_credentials as validate_billomat_credentials,
 )
-from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.settings import (
-    ENDPOINTS,
-    INCREMENTAL_FIELDS,
-)
-from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import (
+from sources.billomat.canonical_descriptions import CANONICAL_DESCRIPTIONS
+from sources.billomat.settings import ENDPOINTS, INCREMENTAL_FIELDS
+from sources.sdk import (
     CanonicalDescriptions,
     DataWarehouseSourceCategory,
     FieldType,
@@ -78,10 +76,6 @@ class BillomatSource(ResumableSource[BillomatSourceConfig, BillomatResumeConfig]
         }
 
     def get_canonical_descriptions(self) -> CanonicalDescriptions:
-        from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.canonical_descriptions import (
-            CANONICAL_DESCRIPTIONS,
-        )
-
         return CANONICAL_DESCRIPTIONS
 
     def get_schemas(

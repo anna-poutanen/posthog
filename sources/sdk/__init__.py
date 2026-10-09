@@ -1,6 +1,6 @@
 """The import surface for a warehouse source plugin.
 
-DEMO (warehouse source plugins): a plugin directory, such as `billomat/` or `demo_acme/`, imports
+DEMO (warehouse source plugins): a plugin directory, such as `sources/billomat/` or `sources/demo_acme/`, imports
 shared code only from this module. Everything here imports without Django, so a plugin installs
 and tests with the `warehouse-sources` dependency group alone. Do not re-export a module that
 imports Django, Redis settings, dlt or pyarrow at import time.
@@ -16,6 +16,7 @@ from products.warehouse_sources.backend.facade.source_config import (
     SourceFieldInputConfigType,
     SourceFieldSwitchGroupConfig,
 )
+from products.warehouse_sources.backend.facade.types import IncrementalField, IncrementalFieldType
 from products.warehouse_sources.backend.temporal.data_imports.sources.common import config
 from products.warehouse_sources.backend.temporal.data_imports.sources.common.base import (
     FieldType,
@@ -46,7 +47,6 @@ from products.warehouse_sources.backend.temporal.data_imports.sources.common.sch
     build_endpoint_schemas,
 )
 from products.warehouse_sources.backend.temporal.data_imports.sources.common.typings import SourceInputs, SourceResponse
-from products.warehouse_sources.backend.types import IncrementalField, IncrementalFieldType
 
 __all__ = [
     "CanonicalDescriptions",

@@ -85,7 +85,6 @@ products/warehouse_sources/backend/temporal/data_imports/sources/bigcommerce/tes
 products/warehouse_sources/backend/temporal/data_imports/sources/bigeye/tests/test_bigeye.py
 products/warehouse_sources/backend/temporal/data_imports/sources/bigmailer/tests/test_bigmailer.py
 products/warehouse_sources/backend/temporal/data_imports/sources/bill_com/tests/test_bill_com.py
-products/warehouse_sources/backend/temporal/data_imports/sources/billomat/tests/test_billomat.py
 products/warehouse_sources/backend/temporal/data_imports/sources/bing_webmaster_tools/tests/test_bing_webmaster_tools.py
 products/warehouse_sources/backend/temporal/data_imports/sources/bitbucket/tests/test_bitbucket.py
 products/warehouse_sources/backend/temporal/data_imports/sources/bitrise/tests/test_bitrise.py
@@ -769,3 +768,4 @@ products/warehouse_sources/backend/temporal/data_imports/sources/zonka_feedback/
 products/warehouse_sources/backend/temporal/data_imports/sources/zoom/tests/test_zoom.py
 products/warehouse_sources/backend/temporal/data_imports/sources/zuora/tests/test_zuora.py
 products/warehouse_sources/backend/temporal/data_imports/sources/zylo/tests/test_zylo.py
+sources/billomat/tests/test_billomat.py

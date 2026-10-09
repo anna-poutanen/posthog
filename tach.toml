@@ -24,6 +24,20 @@ depends_on = [
 ]
 layer = "modules"
 
+# DEMO (warehouse source plugins): one module per vendor directory under the top-level `sources/`.
+# A vendor imports shared code only from `sources.sdk`, never from posthog, products or another vendor.
+[[modules]]
+path = "sources.*"
+depends_on = ["sources.sdk"]
+layer = "modules"
+
+# The explicit entry wins over the glob for `sources.sdk`. The SDK re-exports the shared source code
+# of warehouse_sources, which still lives in the product.
+[[modules]]
+path = "sources.sdk"
+depends_on = ["posthog", "products.warehouse_sources"]
+layer = "modules"
+
 [[modules]]
 path = "common.hogql_parser"
 depends_on = []

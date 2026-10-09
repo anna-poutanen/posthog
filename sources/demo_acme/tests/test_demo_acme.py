@@ -6,11 +6,8 @@ from unittest.mock import MagicMock, patch
 
 from requests import Response
 
-from products.warehouse_sources.backend.temporal.data_imports.sources.demo_acme.source import (
-    DemoAcmeResumeConfig,
-    demo_acme_source,
-)
-from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import ResumableSourceManager
+from sources.demo_acme.source import DemoAcmeResumeConfig, demo_acme_source
+from sources.sdk import ResumableSourceManager
 
 
 def _response(rows: list[dict[str, Any]]) -> Response:
@@ -32,9 +29,7 @@ def test_resume_starts_at_the_saved_page_and_checkpoints_each_next_page() -> Non
         sent_pages.append((request.params or {}).get("page"))
         return next(responses)
 
-    with patch(
-        "products.warehouse_sources.backend.temporal.data_imports.sources.demo_acme.source.make_tracked_session"
-    ) as make_session:
+    with patch("sources.demo_acme.source.make_tracked_session") as make_session:
         session = make_session.return_value
         session.headers = {}
         session.prepare_request.side_effect = lambda request: request

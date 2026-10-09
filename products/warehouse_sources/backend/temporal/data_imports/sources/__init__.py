@@ -1,5 +1,6 @@
 import functools
 import importlib
+import importlib.util
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,10 @@ from .common.registry import SourceRegistry
 __all__ = ["SourceRegistry", "load_all_sources", "load_source", "source_module_path"]
 
 logger = structlog.get_logger(__name__)
+
+# DEMO (warehouse source plugins): plugin vendors live in the top-level `sources` package, one
+# directory per vendor, and register as `sources.<vendor>.source`.
+PLUGIN_PACKAGE = "sources"
 
 
 def load_all_sources() -> None:
@@ -74,23 +79,43 @@ def _source_modules_by_squashed_name() -> dict[str, str]:
     return {path.rsplit(".", 2)[1].replace("_", ""): path for path in _source_module_paths()}
 
 
+def _plugin_package_dir() -> Path | None:
+    """The directory of the top-level `sources` package, or None when it is not importable."""
+    spec = importlib.util.find_spec(PLUGIN_PACKAGE)
+    if spec is None or not spec.submodule_search_locations:
+        return None
+    return Path(spec.submodule_search_locations[0])
+
+
+def _top_level_plugin_module_paths() -> list[str]:
+    plugin_dir = _plugin_package_dir()
+    if plugin_dir is None:
+        return []
+    return sorted(f"{PLUGIN_PACKAGE}.{source.parent.name}.source" for source in plugin_dir.glob("*/source.py"))
+
+
 def _source_module_paths() -> list[str]:
     """Every source module `_load_all` imports, derived from the directory layout.
 
     A test asserts this stays in step with `_load_all`'s import list.
+
+    DEMO (warehouse source plugins): this also holds the vendors of the top-level `sources` package.
     """
     package_dir = Path(__path__[0])
-    return sorted(f"{__name__}.{source.parent.name}.source" for source in package_dir.glob("*/source.py"))
+    product_modules = [f"{__name__}.{source.parent.name}.source" for source in package_dir.glob("*/source.py")]
+    return sorted(product_modules + _top_level_plugin_module_paths())
 
 
 def _plugin_module_paths() -> list[str]:
     """Source modules of plugin directories, which keep their generated config in ``_config.py``.
 
     DEMO (warehouse source plugins): a plugin directory has no line in `_load_all`, so the bulk
-    load imports these on their own.
+    load imports these on their own. Every vendor of the top-level `sources` package is a plugin.
+    A directory in this package with a ``_config.py`` is a plugin too.
     """
     package_dir = Path(__path__[0])
-    return sorted(f"{__name__}.{config.parent.name}.source" for config in package_dir.glob("*/_config.py"))
+    product_plugins = [f"{__name__}.{config.parent.name}.source" for config in package_dir.glob("*/_config.py")]
+    return sorted(product_plugins + _top_level_plugin_module_paths())
 
 
 def _load_source(module_path: str) -> None:

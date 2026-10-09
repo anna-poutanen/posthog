@@ -22,6 +22,10 @@ products/              # Product-specific apps (see products/README.md for layou
     services/          # Optional: services this product deploys (see "What a product can own")
     packages/          # Optional: libraries/CLIs this product owns
 
+sources/               # Warehouse source plugins, one directory per vendor (see "Sources" below)
+  sdk/                 # The only import surface of a vendor directory
+  <vendor>/            # source.py, _config.py, icon.png, __init__.py, tests/
+
 services/              # Independent services NOT owned by any one product
   llm-gateway/         # LLM proxy service
   mcp/                 # Model Context Protocol service
@@ -86,6 +90,19 @@ Most products are a Django app plus React scenes — and most already carry more
 Top-level `services/`, `packages/`, `tools/`, and `cli/` are for things no single product owns. Keep package names (`@posthog/<name>`) independent of location — pnpm resolves by name, so relocating later is a path move with no import churn.
 
 Nest because tooling boundaries become path-scoped (`products/<product>/**` for CODEOWNERS, CI filters, lint) instead of hand-synced `<product>-*` prefixes. A prefix doing a folder's job is the signal to nest.
+
+### Sources
+
+`sources/` holds the warehouse source plugins.
+Each directory is one vendor, and a vendor imports shared code only from `sources.sdk`.
+Vendor tests run without services, with `sources/pytest.ini`.
+Team warehouse-sources owns the tree.
+Vendors that other code imports (core-coupled vendors) stay in `products/warehouse_sources/`.
+
+This tree is an exception to the rule that code of one product goes under `products/`.
+The tree is a plugin catalog with its own contract (the SDK), not part of the product's internals.
+A top-level path lets one glob (`sources/**`) scope the tooling for all vendors: ownership, CI filters, lint and import rules.
+See `sources/AGENTS.md` for the vendor rules.
 
 ### Packages
 

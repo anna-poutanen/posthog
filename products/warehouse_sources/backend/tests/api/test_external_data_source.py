@@ -6887,7 +6887,7 @@ class TestExternalDataSource(APIBaseTest):
         mock_validate_credentials.assert_called_once()
 
     @patch(
-        "products.warehouse_sources.backend.temporal.data_imports.sources.billomat.source.BillomatSource.validate_credentials",
+        "sources.billomat.source.BillomatSource.validate_credentials",
         return_value=(True, None),
     )
     def test_update_with_host_change_preserves_secret_nested_in_switch_group_is_rejected(

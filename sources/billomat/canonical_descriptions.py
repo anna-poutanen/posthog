@@ -6,7 +6,7 @@ Keyed by the resource names in `settings.py` `ENDPOINTS`, which match the
 enrichment.
 """
 
-from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import CanonicalDescriptions
+from sources.sdk import CanonicalDescriptions
 
 CANONICAL_DESCRIPTIONS: CanonicalDescriptions = {
     "Clients": {

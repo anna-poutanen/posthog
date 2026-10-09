@@ -1,4 +1,4 @@
-from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import IncrementalField, IncrementalFieldType
+from sources.sdk import IncrementalField, IncrementalFieldType
 
 ENDPOINTS = (
     "Clients",
