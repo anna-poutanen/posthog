@@ -8,6 +8,7 @@ from unittest.mock import patch
 from django.test import override_settings
 
 from products.warehouse_sources.backend.temporal.data_imports.sources import (
+    _plugin_module_paths,
     _should_capture_import_failure,
     _source_module_paths,
     load_all_sources,
@@ -27,7 +28,7 @@ def test_broken_source_module_does_not_block_the_rest_of_the_catalog():
             f"{_SOURCES}._source_module_paths",
             return_value=[f"{_SOURCES}.gone.source", f"{_SOURCES}.pypi.source"],
         ),
-        patch(f"{_SOURCES}.capture_exception") as capture_exception,
+        patch("posthog.exceptions_capture.capture_exception") as capture_exception,
         override_settings(CLOUD_DEPLOYMENT="US"),
     ):
         load_all_sources()
@@ -60,7 +61,7 @@ def test_a_missing_module_is_reported_only_from_a_deploy(
 def test_per_source_fallback_covers_every_source_the_bulk_import_loads():
     bulk_import_list = ast.parse((Path(__file__).parent.parent / "_load_all.py").read_text())
 
-    assert set(_source_module_paths()) == {
+    assert set(_source_module_paths()) - set(_plugin_module_paths()) == {
         f"{_SOURCES}.{node.module}"
         for node in ast.walk(bulk_import_list)
         if isinstance(node, ast.ImportFrom) and node.module

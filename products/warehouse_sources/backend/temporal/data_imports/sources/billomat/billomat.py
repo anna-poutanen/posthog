@@ -4,17 +4,15 @@ from typing import Any, Optional
 
 from requests import Response
 
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.http import make_tracked_session
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.rest_source import (
+from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import (
+    EndpointResource,
+    PageNumberPaginator,
+    Resource,
     RESTAPIConfig,
+    ResumableSourceManager,
+    make_tracked_session,
     rest_api_resource,
 )
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.rest_source.paginators import (
-    PageNumberPaginator,
-)
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.rest_source.resource import Resource
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.rest_source.typing import EndpointResource
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.resumable import ResumableSourceManager
 
 # Billomat's documented maximum; requesting the largest page size keeps the per-15-minute
 # request budget (300 without a registered app) from being spent on pagination alone.

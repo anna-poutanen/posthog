@@ -34,7 +34,6 @@ from products.warehouse_sources.backend.temporal.data_imports.sources.common.htt
     get_http_response_bytes_histogram,
     status_class,
 )
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.http.sampling import maybe_capture
 from products.warehouse_sources.backend.temporal.data_imports.sources.common.http.url_utils import (
     host_of,
     redact_literal_values,
@@ -55,6 +54,30 @@ class RequestRecord:
     status_code: int | None
     latency_ms: int
     error_class: str | None
+
+
+def maybe_capture(
+    *,
+    request: PreparedRequest,
+    response: Response | None,
+    record: RequestRecord,
+    ctx: JobContext,
+    redact_values: tuple[str, ...] = (),
+    streamed: bool = False,
+) -> None:
+    # Sampling reads Redis and object storage through Django, so it loads on first capture. Tests patch this name.
+    from products.warehouse_sources.backend.temporal.data_imports.sources.common.http.sampling import (  # noqa: PLC0415 — keeps Django off the import path of a source
+        maybe_capture as capture_sample,
+    )
+
+    capture_sample(
+        request=request,
+        response=response,
+        record=record,
+        ctx=ctx,
+        redact_values=redact_values,
+        streamed=streamed,
+    )
 
 
 def _request_size(request: PreparedRequest) -> int:

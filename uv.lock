@@ -6052,6 +6052,18 @@ sentiment = [
     { name = "optimum", extra = ["onnxruntime"] },
     { name = "torch" },
 ]
+warehouse-sources = [
+    { name = "jsonpath-ng" },
+    { name = "orjson" },
+    { name = "pydantic" },
+    { name = "pytest" },
+    { name = "python-dateutil" },
+    { name = "redis" },
+    { name = "requests" },
+    { name = "structlog" },
+    { name = "temporalio" },
+    { name = "tenacity" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -6339,6 +6351,18 @@ proto-codegen = [
 sentiment = [
     { name = "optimum", extras = ["onnxruntime"], specifier = "~=1.25.0" },
     { name = "torch", specifier = "~=2.9.0" },
+]
+warehouse-sources = [
+    { name = "jsonpath-ng", specifier = "~=1.7.0" },
+    { name = "orjson", specifier = "==3.11.9" },
+    { name = "pydantic", specifier = "~=2.12.0" },
+    { name = "pytest", specifier = "~=9.1.1" },
+    { name = "python-dateutil", specifier = "~=2.9.0" },
+    { name = "redis", specifier = "==5.3.1" },
+    { name = "requests", specifier = "~=2.33.0" },
+    { name = "structlog", specifier = "==25.5.0" },
+    { name = "temporalio", specifier = "==1.33.0" },
+    { name = "tenacity", specifier = "==9.1.4" },
 ]
 
 [[package]]

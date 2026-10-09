@@ -21,8 +21,6 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, cast
 
-from django.conf import settings
-
 import requests
 from requests import PreparedRequest, Response
 from requests.adapters import HTTPAdapter
@@ -45,6 +43,8 @@ NO_REQUEST_TIMEOUT: RequestTimeout = cast(RequestTimeout, (None, None))
 
 def default_request_timeout() -> RequestTimeout:
     """The (connect, read) timeout for a request that names none."""
+    from django.conf import settings  # noqa: PLC0415 — keeps Django off the import path of a source
+
     return (
         settings.DATA_WAREHOUSE_SOURCE_CONNECT_TIMEOUT_SECONDS,
         settings.DATA_WAREHOUSE_SOURCE_READ_TIMEOUT_SECONDS,

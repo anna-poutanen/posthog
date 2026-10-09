@@ -168,7 +168,6 @@ from .bigmailer.source import BigMailerSource
 from .bigquery.source import BigQuerySource
 from .bill_com.source import BillComSource
 from .billit.source import BillitSource
-from .billomat.source import BillomatSource
 from .bing_ads.source import BingAdsSource
 from .bing_webmaster_tools.source import BingWebmasterToolsSource
 from .bitbucket.source import BitbucketSource

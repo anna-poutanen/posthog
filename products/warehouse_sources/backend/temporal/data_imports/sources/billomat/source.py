@@ -2,16 +2,7 @@ import re
 from dataclasses import field
 from typing import Optional, cast
 
-from posthog.dataclasses import frozen
-
-from products.warehouse_sources.backend.facade.source_config import (
-    DataWarehouseSourceCategory,
-    ReleaseStatus,
-    SourceConfig,
-    SourceFieldInputConfig,
-    SourceFieldInputConfigType,
-    SourceFieldSwitchGroupConfig,
-)
+from products.warehouse_sources.backend.temporal.data_imports.sources.billomat._config import BillomatSourceConfig
 from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.billomat import (
     BillomatResumeConfig,
     billomat_source,
@@ -21,21 +12,30 @@ from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.s
     ENDPOINTS,
     INCREMENTAL_FIELDS,
 )
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.base import FieldType, ResumableSource
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.canonical_descriptions import (
+from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import (
     CanonicalDescriptions,
-)
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.registry import SourceRegistry
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.resumable import ResumableSourceManager
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.schema import (
+    DataWarehouseSourceCategory,
+    FieldType,
+    ReleaseStatus,
+    ResumableSource,
+    ResumableSourceManager,
+    SourceConfig,
+    SourceFieldInputConfig,
+    SourceFieldInputConfigType,
+    SourceFieldSwitchGroupConfig,
+    SourceInputs,
+    SourceKey,
+    SourceRegistry,
+    SourceResponse,
     SourceSchema,
     build_endpoint_schemas,
+    frozen,
+    source_key,
 )
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.typings import SourceInputs, SourceResponse
-from products.warehouse_sources.backend.temporal.data_imports.sources.generated_configs.billomat import (
-    BillomatSourceConfig,
-)
-from products.warehouse_sources.backend.types import ExternalDataSourceType
+
+# DEMO (warehouse source plugins): the source names itself with this string. It still matches an
+# ExternalDataSourceType value, so the registry stores the enum member. Layer 2 removes the enum.
+SOURCE_KEY = "Billomat"
 
 # The Billomat ID is interpolated into https://{billomat_id}.billomat.net, so it must be a bare
 # DNS subdomain: alphanumerics and hyphens, starting alphanumeric. This keeps outbound traffic
@@ -62,8 +62,8 @@ class BillomatSource(ResumableSource[BillomatSourceConfig, BillomatResumeConfig]
     api_docs_url = "https://www.billomat.com/en/api/"
 
     @property
-    def source_type(self) -> ExternalDataSourceType:
-        return ExternalDataSourceType.BILLOMAT
+    def source_type(self) -> SourceKey:
+        return source_key(SOURCE_KEY)
 
     @property
     def connection_host_fields(self) -> list[str]:
@@ -151,7 +151,7 @@ class BillomatSource(ResumableSource[BillomatSourceConfig, BillomatResumeConfig]
     @property
     def get_source_config(self) -> SourceConfig:
         return SourceConfig(
-            name=ExternalDataSourceType.BILLOMAT,
+            name=self.source_type,
             category=DataWarehouseSourceCategory.FINANCE___ACCOUNTING,
             label="Billomat",
             caption="Sync clients, suppliers, invoices, estimates, credit notes and incoming supplier bills from Billomat.",

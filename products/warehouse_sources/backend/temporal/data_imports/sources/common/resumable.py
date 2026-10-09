@@ -6,14 +6,10 @@ import collections.abc
 from contextlib import contextmanager
 from typing import Generic
 
-from django.conf import settings
-
 import redis
 import orjson
 import redis.exceptions as redis_exceptions
 from structlog.types import FilteringBoundLogger
-
-from posthog.redis import get_client
 
 from products.warehouse_sources.backend.temporal.data_imports.pipelines.core.abandonable_iterate import (
     SourceAbandonedError,
@@ -24,6 +20,15 @@ from products.warehouse_sources.backend.temporal.data_imports.sources.common.typ
     SourceInputs,
     SourceResponse,
 )
+
+
+def get_client(redis_url: str) -> redis.Redis:
+    # Wraps posthog.redis.get_client so Django loads only when a client is made. Tests patch this name.
+    from posthog.redis import (
+        get_client as get_redis_client,  # noqa: PLC0415 — keeps Django off the import path of a source
+    )
+
+    return get_redis_client(redis_url)
 
 
 class _WriteFence:
@@ -113,6 +118,8 @@ class ResumableSourceManager(Generic[ResumableData]):
 
     @contextmanager
     def _get_redis(self):
+        from django.conf import settings  # noqa: PLC0415 — keeps Django off the import path of a source
+
         if not settings.DATA_WAREHOUSE_REDIS_HOST or not settings.DATA_WAREHOUSE_REDIS_PORT:
             raise Exception(
                 "Missing env vars for dwh row tracking: DATA_WAREHOUSE_REDIS_HOST or DATA_WAREHOUSE_REDIS_PORT"

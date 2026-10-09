@@ -3,12 +3,7 @@ import importlib
 from pathlib import Path
 from typing import Any
 
-from django.conf import settings
-
 import structlog
-
-from posthog.exceptions_capture import capture_exception
-from posthog.run_mode import derive_run_mode
 
 from products.warehouse_sources.backend.types import ExternalDataSourceType
 
@@ -45,6 +40,9 @@ def load_all_sources() -> None:
 def _bulk_load() -> None:
     from . import _load_all  # noqa: F401, PLC0415
 
+    for module_path in _plugin_module_paths():
+        importlib.import_module(module_path)
+
 
 def source_module_path(source_type: ExternalDataSourceType) -> str | None:
     """The source module that registers ``source_type``, or None when no directory matches.
@@ -52,8 +50,12 @@ def source_module_path(source_type: ExternalDataSourceType) -> str | None:
     A source directory is the enum member's name in lowercase with underscores added
     (``BINGADS`` -> ``bing_ads``), so the lookup strips underscores from the directory names.
     A test asserts every registered source resolves this way.
+
+    DEMO (warehouse source plugins): a plugin key with no enum member is its own name
+    (``"DemoAcme"`` -> ``demo_acme``).
     """
-    return _source_modules_by_squashed_name().get(source_type.name.lower())
+    name = source_type.name if isinstance(source_type, ExternalDataSourceType) else source_type
+    return _source_modules_by_squashed_name().get(name.lower())
 
 
 def load_source(source_type: ExternalDataSourceType) -> None:
@@ -81,12 +83,26 @@ def _source_module_paths() -> list[str]:
     return sorted(f"{__name__}.{source.parent.name}.source" for source in package_dir.glob("*/source.py"))
 
 
+def _plugin_module_paths() -> list[str]:
+    """Source modules of plugin directories, which keep their generated config in ``_config.py``.
+
+    DEMO (warehouse source plugins): a plugin directory has no line in `_load_all`, so the bulk
+    load imports these on their own.
+    """
+    package_dir = Path(__path__[0])
+    return sorted(f"{__name__}.{config.parent.name}.source" for config in package_dir.glob("*/_config.py"))
+
+
 def _load_source(module_path: str) -> None:
     try:
         importlib.import_module(module_path)
     except Exception as e:
         logger.exception("load_all_sources: source module failed to import", module=module_path)
         if _should_capture_import_failure(e):
+            from posthog.exceptions_capture import (
+                capture_exception,  # noqa: PLC0415 — keeps Django off the import path of a source
+            )
+
             capture_exception(e)
 
 
@@ -100,6 +116,10 @@ def _should_capture_import_failure(error: Exception) -> bool:
     which counts wherever it happens.
     """
     if isinstance(error, ImportError):  # ModuleNotFoundError is a subclass
+        from django.conf import settings  # noqa: PLC0415 — keeps Django off the import path of a source
+
+        from posthog.run_mode import derive_run_mode  # noqa: PLC0415 — keeps Django off the import path of a source
+
         return derive_run_mode(settings.CLOUD_DEPLOYMENT, settings.DEBUG).is_deployed_cloud
     return True
 

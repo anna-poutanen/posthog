@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+from pathlib import Path
 from typing import Any, Optional
 
 from django.core.management.base import BaseCommand
@@ -20,11 +21,16 @@ from products.warehouse_sources.backend.facade.source_config import (
     SourceFieldSSHTunnelConfig,
     SourceFieldSwitchGroupConfig,
 )
-from products.warehouse_sources.backend.temporal.data_imports.sources import SourceRegistry
+from products.warehouse_sources.backend.temporal.data_imports.sources import SourceRegistry, source_module_path
 from products.warehouse_sources.backend.types import ExternalDataSourceType
 
 logger = get_logger(__name__)
 logger.setLevel(logging.INFO)
+
+SOURCES_DIR = Path(__file__).parent.parent.parent / "temporal" / "data_imports" / "sources"
+COMMON_CONFIG_PACKAGE = "products.warehouse_sources.backend.temporal.data_imports.sources.common"
+# DEMO (warehouse source plugins): a plugin directory imports shared code only from the SDK.
+PLUGIN_CONFIG_PACKAGE = "products.warehouse_sources.backend.temporal.data_imports.sources.sdk"
 
 
 # Generates `@config.Config` dataclasses to be used by sources to parse inputs from the frontend.
@@ -51,10 +57,12 @@ class SourceConfigGenerator:
         self.nested_configs: dict[str, str] = {}
 
     def generate_all_modules(self) -> dict[str, str]:
-        """One generated module per source, keyed by module name (`ExternalDataSourceType.<MEMBER>.name.lower()`).
+        """One generated module per source, keyed by its path under the sources directory.
 
-        The module-name rule is shared with `generated_configs/__init__.py`'s
-        `get_config_for_source`, which resolves configs by deriving the same name at runtime —
+        That path is `generated_configs/<ExternalDataSourceType.<MEMBER>.name.lower()>.py`, or
+        `<source dir>/_config.py` for a plugin directory (DEMO: warehouse source plugins), which
+        already holds that file. The rule is shared with `generated_configs/__init__.py`'s
+        `get_config_for_source`, which resolves configs by deriving the same path at runtime —
         neither side needs regenerating when a source is added."""
         try:
             sources = SourceRegistry.get_all_sources()
@@ -63,28 +71,53 @@ class SourceConfigGenerator:
             modules: dict[str, str] = {}
             for source_type, source_config in configs.items():
                 logger.info(f"Generating config for {source_type}")
+                plugin_config_path = self._plugin_config_path(source_type)
+                if plugin_config_path is not None:
+                    modules[plugin_config_path] = self._generate_module(
+                        source_type, source_config, config_package=PLUGIN_CONFIG_PACKAGE
+                    )
+                    continue
                 module_name = source_type.name.lower()
                 if not module_name.isidentifier():
                     raise ValueError(f"{source_type.name} does not lower() to a valid module name")
-                if module_name in modules:
+                module_path = f"generated_configs/{module_name}.py"
+                if module_path in modules:
                     raise ValueError(f"Module name collision for {source_type.name}: {module_name}")
-                modules[module_name] = self._generate_module(source_type, source_config)
+                modules[module_path] = self._generate_module(source_type, source_config)
         except Exception as e:
             logger.exception(f"Error generating config: {e}")
             raise
 
         return modules
 
-    def _generate_module(self, source_type: ExternalDataSourceType, source_config: SourceConfig) -> str:
+    @staticmethod
+    def _plugin_config_path(source_type: ExternalDataSourceType) -> str | None:
+        module_path = source_module_path(source_type)
+        if module_path is None:
+            return None
+        config_path = f"{module_path.split('.')[-2]}/_config.py"
+        return config_path if (SOURCES_DIR / config_path).is_file() else None
+
+    def _generate_module(
+        self,
+        source_type: ExternalDataSourceType,
+        source_config: SourceConfig,
+        config_package: str = COMMON_CONFIG_PACKAGE,
+    ) -> str:
         self.generated_classes = {}
         self.imports = set()
         self.typing_import = set()
         self.nested_configs = {}
-        self.generate_source_config(source_type, source_config)
+        self.generate_source_config(source_type, source_config, config_package)
         return self._build_module()
 
-    def generate_source_config(self, source_type: ExternalDataSourceType, source_config: SourceConfig) -> None:
-        self.imports.add("from products.warehouse_sources.backend.temporal.data_imports.sources.common import config")
+    def generate_source_config(
+        self,
+        source_type: ExternalDataSourceType,
+        source_config: SourceConfig,
+        config_package: str = COMMON_CONFIG_PACKAGE,
+    ) -> None:
+        self.imports.add(f"from {config_package} import config")
 
         class_name = self._get_config_class_name(source_type)
         fields = []
@@ -442,7 +475,7 @@ class SourceConfigGenerator:
         raise ValueError(f"Converter value {field.converter} not recognized")
 
     def _get_config_class_name(self, source_type: ExternalDataSourceType) -> str:
-        return f"{source_type.value}SourceConfig"
+        return f"{source_type}SourceConfig"
 
     def _get_nested_class_name(self, field_name: str, parent_class: str) -> str:
         parent_prefix = parent_class.replace("SourceConfig", "")
@@ -584,18 +617,16 @@ class Command(BaseCommand):
         generator = SourceConfigGenerator()
         modules = generator.generate_all_modules()
 
-        output_dir = os.path.join(
-            os.path.dirname(__file__), "..", "..", "temporal", "data_imports", "sources", "generated_configs"
-        )
+        output_dir = os.path.join(SOURCES_DIR, "generated_configs")
         os.makedirs(output_dir, exist_ok=True)
 
-        for module_name, module_source in modules.items():
-            with open(os.path.join(output_dir, f"{module_name}.py"), "w") as f:
+        for module_path, module_source in modules.items():
+            with open(os.path.join(SOURCES_DIR, module_path), "w") as f:
                 f.write(module_source)
 
         # __init__.py is hand-written (the runtime resolver); never write it. Remove modules for
         # sources no longer in the registry so a deleted source can't leave stale config classes.
-        expected = {f"{name}.py" for name in modules} | {"__init__.py"}
+        expected = {path.removeprefix("generated_configs/") for path in modules} | {"__init__.py"}
         for stale in set(os.listdir(output_dir)) - expected:
             if stale.endswith(".py"):
                 os.remove(os.path.join(output_dir, stale))

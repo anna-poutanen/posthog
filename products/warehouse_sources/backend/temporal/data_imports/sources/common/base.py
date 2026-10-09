@@ -8,13 +8,12 @@ import structlog
 
 from posthog.dataclasses import frozen
 
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.webhook_s3 import WebhookSourceManager
-
 if TYPE_CHECKING:
     from posthog.cdp.templates.hog_function_template import HogFunctionTemplateDC
 
     from products.warehouse_sources.backend.models.external_data_source import ExternalDataSource
     from products.warehouse_sources.backend.temporal.data_imports.sources.common.sql.predicates import RowFilterColumn
+    from products.warehouse_sources.backend.temporal.data_imports.sources.common.webhook_s3 import WebhookSourceManager
 
 from products.warehouse_sources.backend.facade.source_config import (
     SourceConfig,
@@ -616,7 +615,7 @@ class WebhookSource(_BaseSource[ConfigType], Generic[ConfigType]):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_webhook_source_manager(self, inputs: SourceInputs) -> WebhookSourceManager:
+    def get_webhook_source_manager(self, inputs: SourceInputs) -> "WebhookSourceManager":
         raise NotImplementedError()
 
     def create_webhook(

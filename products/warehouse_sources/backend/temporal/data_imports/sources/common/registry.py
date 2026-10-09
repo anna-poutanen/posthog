@@ -1,10 +1,28 @@
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from products.warehouse_sources.backend.types import ExternalDataSourceType
 
 if TYPE_CHECKING:
     from products.warehouse_sources.backend.temporal.data_imports.sources.common.base import AnySource
+
+
+# DEMO (warehouse source plugins): the type of a registry key. Layer 2 deletes the enum and makes
+# this `str`, and no plugin changes, because plugins name the alias and never the enum.
+SourceKey = ExternalDataSourceType
+
+
+def source_key(key: str) -> SourceKey:
+    """The registry key for a source type string: its enum member, or the string itself.
+
+    DEMO (warehouse source plugins): a plugin source names itself with a plain string. A string
+    that matches a member resolves to that member, so every enum caller keeps working. A string
+    with no member stays a plain string, cast to the enum type.
+    """
+    try:
+        return ExternalDataSourceType(key)
+    except ValueError:
+        return cast(SourceKey, key)
 
 
 class SourceRegistry:
@@ -40,7 +58,7 @@ class SourceRegistry:
     @classmethod
     def register(cls, source_class: type["AnySource"]):
         source_class_instance = source_class()
-        source_type = source_class_instance.source_type
+        source_type = source_key(source_class_instance.source_type)
 
         cls._sources[source_type] = source_class_instance
 
@@ -66,13 +84,12 @@ class SourceRegistry:
         # work, but the lazy single-module load reads `source_type.name`, which a plain str lacks.
         # Coerce to a real enum member first so both the lazy and full-load paths resolve, and so
         # an unknown value surfaces as ValueError rather than AttributeError.
-        try:
-            source_type = ExternalDataSourceType(source_type)
-        except ValueError:
-            raise ValueError(f"Unknown source type: {source_type}")
+        source_type = source_key(source_type)
 
         cls._load_one(source_type)
-        if source_type not in cls._sources:
+        # A string key with no enum member can only come from a plugin directory, which the
+        # single-module load already tried. An unknown string must not start the full load.
+        if source_type not in cls._sources and isinstance(source_type, ExternalDataSourceType):
             cls._ensure_loaded()
         if source_type not in cls._sources:
             raise ValueError(f"Unknown source type: {source_type}")

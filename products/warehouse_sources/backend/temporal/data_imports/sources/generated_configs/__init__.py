@@ -1,9 +1,20 @@
 # Hand-written resolver for the generated per-source config modules in this package.
 # `pnpm generate:source-configs` (re)writes the per-source modules; it never touches this file.
 import importlib
+import importlib.util
 
+from products.warehouse_sources.backend.temporal.data_imports.sources import source_module_path
 from products.warehouse_sources.backend.temporal.data_imports.sources.common.config import Config
 from products.warehouse_sources.backend.types import ExternalDataSourceType
+
+
+def _config_module_name(source: ExternalDataSourceType) -> str:
+    source_module = source_module_path(source)
+    if source_module is not None:
+        plugin_config_module = f"{source_module.removesuffix('.source')}._config"
+        if importlib.util.find_spec(plugin_config_module) is not None:
+            return plugin_config_module
+    return f"{__package__}.{source.name.lower()}"
 
 
 def get_config_for_source(source: ExternalDataSourceType) -> type[Config]:
@@ -14,6 +25,9 @@ def get_config_for_source(source: ExternalDataSourceType) -> type[Config]:
     source needs no change here. Static importers should import the class from its
     per-source module directly (e.g. `from ...generated_configs.stripe import
     StripeSourceConfig`).
+
+    DEMO (warehouse source plugins): a plugin directory keeps its config next to its code, in
+    `<source dir>/_config.py`. Look there first, then here.
     """
-    module = importlib.import_module(f".{source.name.lower()}", __package__)
-    return getattr(module, f"{source.value}SourceConfig")
+    module = importlib.import_module(_config_module_name(source))
+    return getattr(module, f"{source}SourceConfig")

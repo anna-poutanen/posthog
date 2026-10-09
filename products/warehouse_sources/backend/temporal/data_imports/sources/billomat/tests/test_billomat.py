@@ -9,6 +9,10 @@ from unittest.mock import MagicMock, patch
 
 from requests import Response
 
+from products.warehouse_sources.backend.temporal.data_imports.sources.billomat._config import (
+    BillomatRegisteredAppConfig,
+    BillomatSourceConfig,
+)
 from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.billomat import (
     BillomatPaginator,
     BillomatResumeConfig,
@@ -18,12 +22,7 @@ from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.b
     validate_credentials as validate_billomat_credentials,
 )
 from products.warehouse_sources.backend.temporal.data_imports.sources.billomat.source import BillomatSource
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.resumable import ResumableSourceManager
-from products.warehouse_sources.backend.temporal.data_imports.sources.common.typings import SourceInputs
-from products.warehouse_sources.backend.temporal.data_imports.sources.generated_configs.billomat import (
-    BillomatRegisteredAppConfig,
-    BillomatSourceConfig,
-)
+from products.warehouse_sources.backend.temporal.data_imports.sources.sdk import ResumableSourceManager, SourceInputs
 
 
 def _make_inputs(**overrides: Any) -> SourceInputs:
